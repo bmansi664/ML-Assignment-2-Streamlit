@@ -40,16 +40,24 @@ if uploaded_file is not None:
 
     model_filename = model_choice.lower().replace(" ", "_") + ".pkl"
 
+    # Load model and scaler
     try:
         model = joblib.load(f"model/{model_filename}")
-    except Exception:
-        st.error(f"Could not load `model/{model_filename}`. Check project directory.")
+        scaler = joblib.load("model/scaler.pkl")
+    except Exception as e:
+        st.error(f"Error loading model files: {e}. Ensure model binaries exist in model/ directory.")
         st.stop()
 
+    # Apply scaling conditionally based on model type
+    if model_choice in ["Logistic Regression", "KNN", "Naive Bayes"]:
+        X_eval = scaler.transform(X_test)
+    else:
+        X_eval = X_test
+
     # Model Predictions
-    y_pred = model.predict(X_test)
+    y_pred = model.predict(X_eval)
     try:
-        y_prob = model.predict_proba(X_test)[:, 1]
+        y_prob = model.predict_proba(X_eval)[:, 1]
     except AttributeError:
         y_prob = y_pred
 

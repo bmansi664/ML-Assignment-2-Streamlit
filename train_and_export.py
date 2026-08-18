@@ -35,8 +35,8 @@ scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-# Save scaled test data for Streamlit upload
-test_df = pd.DataFrame(X_test_scaled, columns=X.columns)
+# Save raw unscaled test features into test_data.csv
+test_df = pd.DataFrame(X_test, columns=X.columns)
 test_df['target'] = y_test.values
 test_df.to_csv("test_data.csv", index=False)
 
