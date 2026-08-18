@@ -38,11 +38,10 @@ X_test_scaled = scaler.transform(X_test)
 # Save raw unscaled test features into test_data.csv
 test_df = pd.DataFrame(X_test, columns=X.columns)
 test_df['target'] = y_test.values
-test_df.to_csv("test_data.csv", index=False)
+test_df.to_csv("../test_data.csv", index=False)
 
 # Create model directory
-os.makedirs("model", exist_ok=True)
-joblib.dump(scaler, "model/scaler.pkl")
+joblib.dump(scaler, "scaler.pkl")
 
 # Define all 6 Models
 models = {
@@ -88,7 +87,7 @@ for name, model in models.items():
 
     # Save model binary
     file_name = name.lower().replace(" ", "_") + ".pkl"
-    joblib.dump(model, f"model/{file_name}")
+    joblib.dump(model, file_name)
 
 # Print metric comparison table to console
 results_df = pd.DataFrame(results)
