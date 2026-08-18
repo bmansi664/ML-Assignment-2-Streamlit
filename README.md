@@ -12,7 +12,7 @@ The objective of this assignment is to train, evaluate, and deploy multiple mach
 
 ## c. Mandatory Submission Links
 - **GitHub Repository:** https://github.com/bmansi664/ML-Assignment-2-Streamlit
-- **Live Streamlit App:** https://<YOUR_APP_SUBDOMAIN>.streamlit.app
+- **Live Streamlit App:** https://ml-assignment-2-app-lwehasfgckykjss2zt3bhq.streamlit.app/
 
 ## d. Models Used & Comparison Table
 
