@@ -11,92 +11,206 @@ from sklearn.metrics import (
     confusion_matrix, classification_report
 )
 
-st.set_page_config(page_title="ML Performance Evaluator", layout="wide")
+# Custom Page Configuration
+st.set_page_config(
+    page_title="Classification Model Benchmark Dashboard",
+    page_icon="🧠",
+    layout="wide"
+)
 
-st.title("📊 Machine Learning Classifier Dashboard")
-st.write("Upload test data to compute metrics, confusion matrix, and classification reports across pre-trained models.")
+st.title("🧠 Breast Cancer Classification Analytics Portal")
+st.markdown("Upload test datasets to dynamically compute performance metrics, view confusion matrices, and analyze classification reports.")
 
 # Sidebar - Dataset Upload
-st.sidebar.header("1. Dataset Upload")
-uploaded_file = st.sidebar.file_uploader("Upload test_data.csv", type=["csv"])
+st.sidebar.header("📁 Step 1: Upload Dataset")
+user_csv = st.sidebar.file_uploader("Upload test_data.csv file", type=["csv"])
 
-if uploaded_file is not None:
-    df_test = pd.read_csv(uploaded_file)
-    st.sidebar.success("CSV Uploaded Successfully!")
+if user_csv is not None:
+    test_data_df = pd.read_csv(user_csv)
+    st.sidebar.success("Dataset successfully loaded!")
 
-    if "target" in df_test.columns:
-        X_test = df_test.drop(columns=["target"])
-        y_test = df_test["target"]
+    if "target" in test_data_df.columns:
+        features_df = test_data_df.drop(columns=["target"])
+        labels_series = test_data_df["target"]
     else:
-        st.error("Uploaded CSV must contain a 'target' column.")
+        st.error("The uploaded CSV file must contain a column named 'target'.")
         st.stop()
 
     # Sidebar - Model Selection Dropdown
-    st.sidebar.header("2. Model Selection")
-    model_choice = st.sidebar.selectbox(
-        "Select Classification Algorithm",
+    st.sidebar.header("⚙️ Step 2: Select Classifier")
+    algorithm_option = st.sidebar.selectbox(
+        "Choose Model Algorithm",
         ("Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "Gradient Boosting")
     )
 
-    model_filename = model_choice.lower().replace(" ", "_") + ".pkl"
+    formatted_model_filename = algorithm_option.lower().replace(" ", "_") + ".pkl"
 
-    # Load model and scaler
+    # Model and Scaler Loader
     try:
-        model = joblib.load(f"model/{model_filename}")
-        scaler = joblib.load("model/scaler.pkl")
-    except Exception as e:
-        st.error(f"Error loading model files: {e}. Ensure model binaries exist in model/ directory.")
+        classifier_model = joblib.load(f"model/{formatted_model_filename}")
+        data_scaler = joblib.load("model/scaler.pkl")
+    except Exception as err:
+        st.error(f"Failed to load required model artifacts: {err}. Verify file paths inside the model/ directory.")
         st.stop()
 
-    # Apply scaling conditionally based on model type
-    if model_choice in ["Logistic Regression", "KNN", "Naive Bayes"]:
-        X_eval = scaler.transform(X_test)
+    # Apply conditional feature transformation
+    if algorithm_option in ["Logistic Regression", "KNN", "Naive Bayes"]:
+        eval_features = data_scaler.transform(features_df)
     else:
-        X_eval = X_test
+        eval_features = features_df
 
-    # Model Predictions
-    y_pred = model.predict(X_eval)
+    # Model Inference
+    predicted_labels = classifier_model.predict(eval_features)
     try:
-        y_prob = model.predict_proba(X_eval)[:, 1]
+        predicted_probs = classifier_model.predict_proba(eval_features)[:, 1]
     except AttributeError:
-        y_prob = y_pred
+        predicted_probs = predicted_labels
 
-    # Compute Metrics
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_prob)
-    prec = precision_score(y_test, y_pred)
-    rec = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
+    # Evaluation Metrics Computation
+    metric_acc = accuracy_score(labels_series, predicted_labels)
+    metric_auc = roc_auc_score(labels_series, predicted_probs)
+    metric_prec = precision_score(labels_series, predicted_labels)
+    metric_rec = recall_score(labels_series, predicted_labels)
+    metric_f1 = f1_score(labels_series, predicted_labels)
+    metric_mcc = matthews_corrcoef(labels_series, predicted_labels)
 
-    # Display Metrics Grid
-    st.subheader(f"📈 Evaluation Metrics: {model_choice}")
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("Accuracy", f"{acc:.4f}")
-    c2.metric("AUC Score", f"{auc:.4f}")
-    c3.metric("Precision", f"{prec:.4f}")
-    c4.metric("Recall", f"{rec:.4f}")
-    c5.metric("F1 Score", f"{f1:.4f}")
-    c6.metric("MCC Score", f"{mcc:.4f}")
+    # Display Metrics Cards
+    st.subheader(f"📊 Performance Evaluation Summary: {algorithm_option}")
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
 
-    st.markdown("---")
+    col1.metric("Accuracy", f"{metric_acc:.4f}")
+    col2.metric("AUC", f"{metric_auc:.4f}")
+    col3.metric("Precision", f"{metric_prec:.4f}")
+    col4.metric("Recall", f"{metric_rec:.4f}")
+    col5.metric("F1 Score", f"{metric_f1:.4f}")
+    col6.metric("MCC Score", f"{metric_mcc:.4f}")
 
-    # Visualizations
-    col_left, col_right = st.columns(2)
+    st.divider()
 
-    with col_left:
-        st.subheader("Confusion Matrix")
-        cm = confusion_matrix(y_test, y_pred)
-        fig, ax = plt.subplots(figsize=(5, 3.5))
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
-        plt.xlabel("Predicted Label")
-        plt.ylabel("True Label")
-        st.pyplot(fig)
+    # Visualization Display
+    left_plot_col, right_report_col = st.columns(2)
 
-    with col_right:
-        st.subheader("Classification Report")
-        report_dict = classification_report(y_test, y_pred, output_dict=True)
-        st.dataframe(pd.DataFrame(report_dict).transpose().style.format("{:.4f}"))
+    with left_plot_col:
+        st.subheader("Matrix Analysis")
+        raw_cm = confusion_matrix(labels_series, predicted_labels)
+        fig_plot, ax_canvas = plt.subplots(figsize=(5, 3.5))
+        sns.heatmap(raw_cm, annot=True, fmt="d", cmap="Blues", ax=ax_canvas, cbar=False)
+        ax_canvas.set_xlabel("Predicted Class")
+        ax_canvas.set_ylabel("True Class")
+        st.pyplot(fig_plot)
+
+    with right_report_col:
+        st.subheader("Detailed Classification Report")
+        detailed_report = classification_report(labels_series, predicted_labels, output_dict=True)
+        st.dataframe(pd.DataFrame(detailed_report).transpose().style.format("{:.4f}"), use_container_width=True)
 
 else:
-    st.info("💡 Upload `test_data.csv` from the sidebar to begin evaluation.")
+    st.info("📌 Please upload `test_data.csv` using the sidebar file loader to evaluate model outputs.")
+import streamlit as st
+import pandas as pd
+import numpy as np
+import joblib
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+from sklearn.metrics import (
+    accuracy_score, roc_auc_score, precision_score,
+    recall_score, f1_score, matthews_corrcoef,
+    confusion_matrix, classification_report
+)
+
+# Custom Page Configuration
+st.set_page_config(
+    page_title="Classification Model Benchmark Dashboard",
+    page_icon="🧠",
+    layout="wide"
+)
+
+st.title("🧠 Breast Cancer Classification Analytics Portal")
+st.markdown("Upload test datasets to dynamically compute performance metrics, view confusion matrices, and analyze classification reports.")
+
+# Sidebar - Dataset Upload
+st.sidebar.header("📁 Step 1: Upload Dataset")
+user_csv = st.sidebar.file_uploader("Upload test_data.csv file", type=["csv"])
+
+if user_csv is not None:
+    test_data_df = pd.read_csv(user_csv)
+    st.sidebar.success("Dataset successfully loaded!")
+
+    if "target" in test_data_df.columns:
+        features_df = test_data_df.drop(columns=["target"])
+        labels_series = test_data_df["target"]
+    else:
+        st.error("The uploaded CSV file must contain a column named 'target'.")
+        st.stop()
+
+    # Sidebar - Model Selection Dropdown
+    st.sidebar.header("⚙️ Step 2: Select Classifier")
+    algorithm_option = st.sidebar.selectbox(
+        "Choose Model Algorithm",
+        ("Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "Gradient Boosting")
+    )
+
+    formatted_model_filename = algorithm_option.lower().replace(" ", "_") + ".pkl"
+
+    # Model and Scaler Loader
+    try:
+        classifier_model = joblib.load(f"model/{formatted_model_filename}")
+        data_scaler = joblib.load("model/scaler.pkl")
+    except Exception as err:
+        st.error(f"Failed to load required model artifacts: {err}. Verify file paths inside the model/ directory.")
+        st.stop()
+
+    # Apply conditional feature transformation
+    if algorithm_option in ["Logistic Regression", "KNN", "Naive Bayes"]:
+        eval_features = data_scaler.transform(features_df)
+    else:
+        eval_features = features_df
+
+    # Model Inference
+    predicted_labels = classifier_model.predict(eval_features)
+    try:
+        predicted_probs = classifier_model.predict_proba(eval_features)[:, 1]
+    except AttributeError:
+        predicted_probs = predicted_labels
+
+    # Evaluation Metrics Computation
+    metric_acc = accuracy_score(labels_series, predicted_labels)
+    metric_auc = roc_auc_score(labels_series, predicted_probs)
+    metric_prec = precision_score(labels_series, predicted_labels)
+    metric_rec = recall_score(labels_series, predicted_labels)
+    metric_f1 = f1_score(labels_series, predicted_labels)
+    metric_mcc = matthews_corrcoef(labels_series, predicted_labels)
+
+    # Display Metrics Cards
+    st.subheader(f"📊 Performance Evaluation Summary: {algorithm_option}")
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+    col1.metric("Accuracy", f"{metric_acc:.4f}")
+    col2.metric("AUC", f"{metric_auc:.4f}")
+    col3.metric("Precision", f"{metric_prec:.4f}")
+    col4.metric("Recall", f"{metric_rec:.4f}")
+    col5.metric("F1 Score", f"{metric_f1:.4f}")
+    col6.metric("MCC Score", f"{metric_mcc:.4f}")
+
+    st.divider()
+
+    # Visualization Display
+    left_plot_col, right_report_col = st.columns(2)
+
+    with left_plot_col:
+        st.subheader("Matrix Analysis")
+        raw_cm = confusion_matrix(labels_series, predicted_labels)
+        fig_plot, ax_canvas = plt.subplots(figsize=(5, 3.5))
+        sns.heatmap(raw_cm, annot=True, fmt="d", cmap="Blues", ax=ax_canvas, cbar=False)
+        ax_canvas.set_xlabel("Predicted Class")
+        ax_canvas.set_ylabel("True Class")
+        st.pyplot(fig_plot)
+
+    with right_report_col:
+        st.subheader("Detailed Classification Report")
+        detailed_report = classification_report(labels_series, predicted_labels, output_dict=True)
+        st.dataframe(pd.DataFrame(detailed_report).transpose().style.format("{:.4f}"), use_container_width=True)
+
+else:
+    st.info("📌 Please upload `test_data.csv` using the sidebar file loader to evaluate model outputs.")
